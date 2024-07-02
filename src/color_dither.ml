@@ -17,8 +17,9 @@ let transform (image : Image.t) ~n =
   let imgWidth = Image.width image in
   let imgHeight = Image.height image in
   
-  let interval = maxPixVal / (n-1) in
-  let pixList = (List.init (n-1) ~f:(fun num -> num * interval)) @ [maxPixVal] in
+  let inter = (Int.to_float maxPixVal) /. (Int.to_float (n-1)) in
+  let interval = Float.to_int inter in
+  let pixList = (List.init (n-1) ~f:(fun num -> Float.to_int ((Int.to_float num) *. inter))) @ [maxPixVal] in
 
   Image.foldi image ~init:image ~f:(fun ~x:x ~y:y image pixel -> (
     let thisPixel = ((Pixel.red pixel), (Pixel.green pixel), (Pixel.blue pixel)) in
