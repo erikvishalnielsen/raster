@@ -8,8 +8,8 @@ let msqError ~currRegion ~compRegion =
   Image.foldi currRegion ~init:(0) ~f:(fun ~x:x ~y:y msqErr currPixel ->
     let compPixel = Image.get compRegion ~x:x ~y:y in
     let redVal = ((Pixel.red currPixel) - (Pixel.red compPixel)) in 
-    let greenVal = ((Pixel.red currPixel) - (Pixel.red compPixel)) in 
-    let blueVal = ((Pixel.red currPixel) - (Pixel.red compPixel)) in 
+    let greenVal = ((Pixel.green currPixel) - (Pixel.green compPixel)) in 
+    let blueVal = ((Pixel.blue currPixel) - (Pixel.blue compPixel)) in 
     msqErr + (redVal * redVal) + (greenVal * greenVal) + (blueVal * blueVal)
   )
 ;;
@@ -20,10 +20,23 @@ let imageRegions ~image ~numWidth ~numHeight ~width ~height =
   ))
 ;;
 
-let swapRegions ~image ~width ~height ~currX ~currY ~currRegion ~otherX ~otherY ~otherRegion =
-  List.init (width * height) ~f:(fun i -> 
-    let x1 = currX + (i % width) in
+let rec loop ~f ~currVal ~increment ~ceiling =
+  if (currVal >= ceiling) then () else (
+    f currVal;
+    loop ~f ~currVal:(currVal + increment) ~increment ~ceiling;
   )
+;;
+
+let swapRegions ~image ~width ~height ~currX ~currY ~otherX ~otherY =
+  let copyImage = Image.copy image in
+  loop ~f:(fun i -> 
+    let x1 = currX + (i % width) in
+    let y1 = currY + (i / width) in
+    let x2 = otherX + (i % width) in
+    let y2 = otherY + (i / width) in
+    Image.set image ~x:x1 ~y:y1 (Image.get copyImage ~x:x2 ~y:y2);
+  Image.set image ~x:x2 ~y:y2 (Image.get copyImage ~x:x1 ~y:y1)) ~currVal:(0) ~increment:(1) ~ceiling:(width * height);
+
   image
 ;;
 
@@ -48,17 +61,16 @@ let rec mosiacRec ~image ~width ~height ~imgRegions ~moves =
   )) in
 
   let newImage = match lowestMSQ with 
-  | (x,y,region) -> swapRegions ~image:image ~width:width ~height:height ~currX:(indexX*width) ~currY:(indexY*height) ~currRegion:currRegion ~otherX:(x*width) ~otherY:(y*height) ~otherRegion:region
+  | (x,y,_) -> swapRegions ~image:image ~width:width ~height:height ~currX:(indexX*width) ~currY:(indexY*height) ~otherX:(x*width) ~otherY:(y*height)
 in
 
-  mosiacRec ~image:newImage ~width:width ~height:height ~imgRegions:(imageRegions ~image:image ~numWidth:numWidth ~numHeight:numHeight ~width:width ~height:height) ~moves:(moves-1);
+  mosiacRec ~image:newImage ~width:width ~height:height ~imgRegions:(imageRegions ~image:newImage ~numWidth:numWidth ~numHeight:numHeight ~width:width ~height:height) ~moves:(moves-1);
   )
 ;;
 
 let transform (image : Image.t) ~width ~height ~moves = 
   let imgWidth = Image.width image in
   let imgHeight = Image.height image in 
-  if not (imgWidth % width = 0 && imgHeight % height = 0) then failwith "Width and Height must go perfectly into the Width and Height of the image";
 
   let numWidth = imgWidth / width in
   let numHeight = imgHeight / width in
